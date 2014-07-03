@@ -3,6 +3,8 @@ PingReboot
 
 PingReboot is an Arduino project that is connected inside your LAN with your router plugged into it's power outlet. It pings an outside IP every 5 minutes and if it cannot reach that IP for a period of 10 minutes it power cycles the power outlet. It then waits a set amount of time and tries to ping again. If Internet connectivity is restored it sends an email stating it had to reboot the router.
 
+Also included is the file "remotepingreboot.htm". Upload this file to a website you control and PingReboot will check this file every 5 minutes to see if the value has changed (For example it may have changed from <0> to <1>). If it has changed it will force a reboot. You never know when you may need to force a remote router reboot, now you can by simply changing a file on your web server.
+
 In other words, you will never again have to drive out to work in the middle of the night to reboot a frozen router :)
 
 
@@ -17,6 +19,7 @@ Hardware Used:
 Software Installation Notes:
 * Modify and upload "sendTheEmail.php" to your server.
 * Modify the "serverName" variable in PingReboot.ino to match your server's address.
+* Upload "remotepingreboot.htm" to your server.
 
 
 Enjoy

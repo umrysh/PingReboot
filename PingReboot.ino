@@ -42,6 +42,7 @@ char params[32];
 int badPingCount = 0;
 int flippedRelay = 0;
 int flashingCounter = 0;
+char RemoteReboot = '0';
 
 
 // Settings for the Timers
@@ -55,6 +56,10 @@ unsigned long timeToWaitOnGiveUp = 3600;
 char serverName[] = "www.example.com"; // server domain
 int serverPort = 80; // server's port
 char pageName[] = "/sendTheEmail.php"; // Page on the server
+
+// Force Reboot Variables
+char rebootServer[] = "www.example.com";
+char rebootPageName[] = "/remotepingreboot.htm";
 
 // Use morse code or serial output.
 // 1 = morse, 0 = serial
@@ -135,60 +140,18 @@ void loop()
     }
     else
     {
-  	 Serial.println(F("Bad Ping"));
+     Serial.println(F("Bad Ping"));
     }
-  	delay(timeBetweenPingsBad);
-  	badPingCount = ++badPingCount;
-  	if(badPingCount > 8)
-  	{
-  		if (flippedRelay < 3)
-  		{
-  			badPingCount = 0;
-  			// Flip Relay
-        if(morseCode==1)
-        {
-          while(sender.continueSending())
-          {
-            delay(100);
-          }
-          sender.setMessage(String("flipping relay"));
-          sender.startSending();
-          digitalWrite(ledred, HIGH);
-          digitalWrite(relay,LOW);
-          delay(timeOffOnFlip);
-          digitalWrite(ledred, LOW);
-          digitalWrite(relay,HIGH);
-        }
-        else
-        {
-  			  Serial.println(F("Flipping Relay"));
-          digitalWrite(ledgrn, LOW);
-          digitalWrite(ledred, HIGH);
-          digitalWrite(relay,LOW);
-          delay(timeOffOnFlip);
-          digitalWrite(ledgrn, HIGH);
-          digitalWrite(ledred, LOW);
-          digitalWrite(relay,HIGH);
-        }
-
-  			flippedRelay = ++flippedRelay;
-
-        if(morseCode==1)
-        {
-          while(sender.continueSending())
-          {
-            delay(100);
-          }
-          sender.setMessage(String("waiting for router to reboot"));
-          sender.startSending();
-        }
-        else
-        {
-  			  Serial.println(F("Waiting for Router to Reboot..."));
-        }
-  			delay(timeToWaitOnFlip);
-  		}else{
-  			// We've flipped it a bunch and getting nothing. Wait an hour
+    delay(timeBetweenPingsBad);
+    badPingCount = ++badPingCount;
+    if(badPingCount > 8)
+    {
+      if (flippedRelay < 3)
+      {
+        badPingCount = 0;
+        rebootRouter();
+      }else{
+        // We've flipped it a bunch and getting nothing. Wait an hour
         if(morseCode==1)
         {
           while(sender.continueSending())
@@ -210,22 +173,22 @@ void loop()
         }
         else
         {
-    			Serial.println(F("Already flipped it 3 times, Giving Up!"));
-    			while(flashingCounter<timeToWaitOnGiveUp)
-    			{
-    				digitalWrite(ledgrn, LOW);
-  	  			digitalWrite(ledred, HIGH);
-  	  			delay(500);
-  	  			digitalWrite(ledgrn, HIGH);
-  	  			digitalWrite(ledred, LOW);
-  	  			delay(500);
+          Serial.println(F("Already flipped it 3 times, Giving Up!"));
+          while(flashingCounter<timeToWaitOnGiveUp)
+          {
+            digitalWrite(ledgrn, LOW);
+            digitalWrite(ledred, HIGH);
+            delay(500);
+            digitalWrite(ledgrn, HIGH);
+            digitalWrite(ledred, LOW);
+            delay(500);
 
-  	  			flashingCounter = ++flashingCounter;
-    			}
-    			flashingCounter = 0;
+            flashingCounter = ++flashingCounter;
+          }
+          flashingCounter = 0;
         }
-  		}
-  	}
+      }
+    }
   }else{
     if(morseCode==1)
     {
@@ -238,15 +201,15 @@ void loop()
     }
     else
     {
-  	  Serial.println(F("Good Ping"));
+      Serial.println(F("Good Ping"));
     }
-  	badPingCount = 0;
-  	if(flippedRelay != 0)
-  	{
-  		// Alert that we had to cycle the power
-  		sprintf(params,"message=%i",flippedRelay);    
-      	if(!postPage(serverName,serverPort,pageName,params))
-      	{
+    badPingCount = 0;
+    if(flippedRelay != 0)
+    {
+      // Alert that we had to cycle the power
+      sprintf(params,"message=%i",flippedRelay);    
+        if(!postPage(serverName,serverPort,pageName,params))
+        {
           if(morseCode==1)
           {
             while(sender.continueSending())
@@ -258,11 +221,11 @@ void loop()
           }
           else
           {
-      		  Serial.println(F("Email Error"));
+            Serial.println(F("Email Error"));
           }
-      	} 
-      	else 
-      	{
+        } 
+        else 
+        {
           if(morseCode==1)
           {
             while(sender.continueSending())
@@ -274,12 +237,13 @@ void loop()
           }
           else
           {
-      		  Serial.println(F("Email Sent"));
+            Serial.println(F("Email Sent"));
           }
-      	}
-  		flippedRelay = 0;
-  	}
-  	delay(timeBetweenPingsGood);
+        }
+      flippedRelay = 0;
+    }
+    delay(timeBetweenPingsGood);
+    checkForReboot();
   }
 }
 
@@ -400,4 +364,136 @@ byte postPage(char* domainBuffer,int thisPort,char* page,char* thisData)
   }
   client.stop();
   return 1;
+}
+
+void rebootRouter(){
+  // Flip Relay
+  if(morseCode==1)
+  {
+    while(sender.continueSending())
+    {
+      delay(100);
+    }
+    sender.setMessage(String("flipping relay"));
+    sender.startSending();
+    digitalWrite(ledred, HIGH);
+    digitalWrite(relay,LOW);
+    delay(timeOffOnFlip);
+    digitalWrite(ledred, LOW);
+    digitalWrite(relay,HIGH);
+  }
+  else
+  {
+    Serial.println(F("Flipping Relay"));
+    digitalWrite(ledgrn, LOW);
+    digitalWrite(ledred, HIGH);
+    digitalWrite(relay,LOW);
+    delay(timeOffOnFlip);
+    digitalWrite(ledgrn, HIGH);
+    digitalWrite(ledred, LOW);
+    digitalWrite(relay,HIGH);
+  }
+  flippedRelay = ++flippedRelay;
+
+  if(morseCode==1)
+  {
+    while(sender.continueSending())
+    {
+      delay(100);
+    }
+    sender.setMessage(String("waiting for router to reboot"));
+    sender.startSending();
+  }
+  else
+  {
+    Serial.println(F("Waiting for Router to Reboot..."));
+  }
+  delay(timeToWaitOnFlip);
+}
+
+void checkForReboot() {
+  char outBuf[64];
+  char inChar;
+
+  if (client.connect(rebootServer, 80)) {
+    if(morseCode==1)
+    {
+      while(sender.continueSending())
+      {
+        delay(100);
+      }
+      sender.setMessage(String("checking for forced reboot"));
+      sender.startSending();
+    }
+    else
+    {
+     Serial.println(F("Checking For Forced Reboot."));
+    }
+    // Make a HTTP request:
+    sprintf(outBuf,"GET %s HTTP/1.1",rebootPageName);
+    client.println(outBuf);
+    sprintf(outBuf,"Host: %s HTTP/1.1",rebootServer);
+    client.println(outBuf);
+    client.println("Connection: close");
+    client.println();
+
+    while(client.connected()) {
+      if (client.available()) {
+        inChar = client.read();
+        if (inChar == '<') {
+          inChar = client.read();
+          if(inChar != RemoteReboot)
+          {
+              RemoteReboot = inChar;
+              // Reboot Router
+              rebootRouter();
+          }else{
+            if(morseCode==1)
+            {
+              while(sender.continueSending())
+              {
+                delay(100);
+              }
+              sender.setMessage(String("no force reboot needed"));
+              sender.startSending();
+            }
+            else
+            {
+              Serial.println(F("No Force Reboot Needed"));
+            }
+          }
+        }
+      }
+    }
+  } 
+  else {
+    if(morseCode==1)
+    {
+      while(sender.continueSending())
+      {
+        delay(100);
+      }
+      sender.setMessage(String("connection failed"));
+      sender.startSending();
+    }
+    else
+    {
+     Serial.println(F("Connection Failed"));
+    }
+  }
+
+  if(morseCode==1)
+  {
+    while(sender.continueSending())
+    {
+      delay(100);
+    }
+    sender.setMessage(String("disconnecting"));
+    sender.startSending();
+  }
+  else
+  {
+   Serial.println(F("Disconnecting."));
+  }
+  client.stop();
 }
